@@ -113,7 +113,7 @@ class configWindows(QWidget,configWin.Ui_Form):
         self.cfg.set('SET','remotePath',self.remotePath)
         self.cfg.write(open(configini_dir, "w"))
         print("应用成功")
-
+ 
 
 if __name__ == "__main__":
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
