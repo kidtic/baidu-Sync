@@ -18,6 +18,8 @@ configini_dir='src/config.ini'
 class SystemTray(QtCore.QObject):
     #新建一个信号：用于开启同步与不开启同步切换
     syncFlag_sign=QtCore.pyqtSignal(int)
+    #新建一个信号：用于立即同步
+    syncnow_sign=QtCore.pyqtSignal()
     # 程序托盘类
     def __init__(self, cfgw):
         super(SystemTray,self).__init__()
@@ -82,12 +84,14 @@ class SystemTray(QtCore.QObject):
             self.tp.setIcon(QIcon('./res/cloud.ico'))
         self.syncFlag_sign.emit(self.syncFlag)
 
+    def syncNow(self):
+        self.syncnow_sign.emit()
+
     def run(self):
-
-
-        a1 = QAction('&设置(Show)', triggered=self.cfgw.show)
+        a1 = QAction('&设置', triggered=self.cfgw.show)
         a2 = QAction('&显示本地文件',triggered=self.xdgopenFile)
         aq = QAction('&退出(Exit)', triggered=self.quitApp)
+        actsync=QAction('&立即同步', triggered=self.syncNow)
         if self.syncFlag==0:
             self.aswitch=QAction('&开启同步', triggered=self.pauseSync)
             self.tp.setIcon(QIcon('./res/cloud_pause.ico'))
@@ -97,6 +101,7 @@ class SystemTray(QtCore.QObject):
         tpMenu = QMenu()
         tpMenu.addAction(a1)
         tpMenu.addAction(a2)
+        tpMenu.addAction(actsync)
         tpMenu.addAction(self.aswitch)
         tpMenu.addSeparator()
         tpMenu.addAction(aq)
@@ -113,6 +118,7 @@ class SystemTray(QtCore.QObject):
         self.syncthead=syncThread(self.cfgw.localPath,self.cfgw.remotePath,self.cfgw.syncTime,self.syncFlag)
         self.syncFlag_sign.connect(self.syncthead.changFLAG)
         self.cfgw.config_sign.connect(self.syncthead.changCONFIG)
+        self.syncnow_sign.connect(self.syncthead.syncupNOW)
         #self.syncthead.syncStatus_sign.connect
         self.syncthead.start()                    #启动线程
         
@@ -171,13 +177,17 @@ class syncThread(QtCore.QThread):
     #槽函数，由主线程发出信号触发的函数
     def changFLAG(self,flg):
         self.syncFlag=flg
+        
     def changCONFIG(self,cfglist):
         self.localPath=cfglist[0]
         self.remotePath=cfglist[1]
         self.syncTime=cfglist[2]
+
     def syncupNOW(self):
         #只要有信号过来，立马同步上传
+        print("[upload file] ", time.asctime(),"|","now")
         self.mybp.syncup(self.localPath,self.remotePath,True)
+        print("finish:   ",self.localPath,self.remotePath)
 
     #线程函数
     def run(self):
