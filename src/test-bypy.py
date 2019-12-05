@@ -1,5 +1,6 @@
 import bypy
 import configparser as config
+import os
 
 
 #读取配置文件
@@ -19,6 +20,8 @@ fc=bp.meta("linux/fgv/sdd")
 print("fc:",fc)
 fc=bp1.meta("linux/fgv/")
 print("fc:",fc)
+
+print(os.path.split(localPath))
 #bp.syncdown(remotePath,localPath,True)
 #bp.syncup(localPath,remotePath,True)
 #bp.compare(remotePath,localPath)

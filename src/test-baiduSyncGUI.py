@@ -8,22 +8,26 @@ import configparser as config
 import os
 import uiobj.configWin as configWin
 from threading import Thread,Lock
+import time
 
 
 configini_dir='src/config.ini'
 
 
 #主框架在这里
-class SystemTray(object):
+class SystemTray(QtCore.QObject):
+    #新建一个信号：用于开启同步与不开启同步切换
+    syncFlag_sign=QtCore.pyqtSignal(int)
     # 程序托盘类
     def __init__(self, cfgw):
+        super(SystemTray,self).__init__()
         self.app = app
         self.cfgw = cfgw
         QApplication.setQuitOnLastWindowClosed(False)  # 禁止默认的closed方法，只能使用qapp.quit()的方法退出程序
         self.tp = QSystemTrayIcon(self.cfgw)
         self.initUI()
         self.run()
-
+        
     def initUI(self):
         # 设置托盘图标
         self.tp.setIcon(QIcon('./res/cloud.ico'))
@@ -36,9 +40,12 @@ class SystemTray(object):
         if not os.path.exists(self.cfgw.localPath):
             QMessageBox.question(self.cfgw,"提示","不存在本地文件夹，请设置本地同步目录")
             self.syncFlag=0
+            self.cfgw.show()
         if self.mybp.meta(self.cfgw.remotePath)!=0 :
-            QMessageBox.question(self.cfgw,"提示","不存在远程文件夹，请设置远程同步目录")
+            QMessageBox.question(self.cfgw,"提示","不存在远程文件夹，请在百度云盘中的bypy文件夹里，建立linux文件夹")
             self.syncFlag=0
+        #连接信号槽
+        self.cfgw.pushButton_movedir.clicked.connect(self.on_moveLocalPath)
 
     def quitApp(self):
         # 退出程序
@@ -47,6 +54,7 @@ class SystemTray(object):
                                   QMessageBox.No, QMessageBox.No)
         if re == QMessageBox.Yes:
             self.tp.setVisible(False)  # 隐藏托盘控件，托盘图标刷新不及时，提前隐藏
+            self.syncthead.exitflg=0
             qApp.quit()  # 退出程序
 
     def message(self):
@@ -63,35 +71,89 @@ class SystemTray(object):
         rn=os.system("xdg-open "+self.cfgw.localPath)
         print(rn)
        
+    def pauseSync(self):
+        if self.syncFlag==1:
+            self.syncFlag=0
+            self.aswitch.setText("&开启同步")
+            self.tp.setIcon(QIcon('./res/cloud_pause.ico'))
+        elif self.syncFlag==0:
+            self.syncFlag=1
+            self.aswitch.setText("&暂停同步")
+            self.tp.setIcon(QIcon('./res/cloud.ico'))
+        self.syncFlag_sign.emit(self.syncFlag)
 
     def run(self):
+
 
         a1 = QAction('&设置(Show)', triggered=self.cfgw.show)
         a2 = QAction('&显示本地文件',triggered=self.xdgopenFile)
         aq = QAction('&退出(Exit)', triggered=self.quitApp)
-        
+        if self.syncFlag==0:
+            self.aswitch=QAction('&开启同步', triggered=self.pauseSync)
+            self.tp.setIcon(QIcon('./res/cloud_pause.ico'))
+        elif self.syncFlag==1:
+            self.aswitch=QAction('&暂停同步', triggered=self.pauseSync)
+            self.tp.setIcon(QIcon('./res/cloud.ico'))
         tpMenu = QMenu()
         tpMenu.addAction(a1)
         tpMenu.addAction(a2)
+        tpMenu.addAction(self.aswitch)
+        tpMenu.addSeparator()
         tpMenu.addAction(aq)
+        
         self.tp.setContextMenu(tpMenu)
         self.tp.show()  # 不调用show不会显示系统托盘消息，图标隐藏无法调用
         # 信息提示
-        # 参数1：标题
-        # 参数2：内容
-        # 参数3：图标（0没有图标 1信息图标 2警告图标 3错误图标），0还是有一个小图标
         self.tp.showMessage('Hello', '我藏好了', icon=0)
-        # 绑定提醒信息点击事件
         self.tp.messageClicked.connect(self.message)
         # 绑定托盘菜单点击事件
         self.tp.activated.connect(self.act)
 
         #开启同步线程
+        self.syncthead=syncThread(self.cfgw.localPath,self.cfgw.remotePath,self.cfgw.syncTime,self.syncFlag)
+        self.syncFlag_sign.connect(self.syncthead.changFLAG)
+        self.cfgw.config_sign.connect(self.syncthead.changCONFIG)
+        #self.syncthead.syncStatus_sign.connect
+        self.syncthead.start()                    #启动线程
+        
+        sys.exit(self.app.exec_())             # 持续对app的连接
 
+    def on_moveLocalPath(self):
+        #--移动本地同步盘的位置，如果原来的位置不可用，则创建空的同步盘
+        #--如果原来的位置可用，则将所有文件移动到新的同步盘
+        #判断新的位置是否可用
+        if not os.path.exists(self.cfgw.lineEdit_2.text()):
+            QMessageBox.question(self,"提示","不存在本地文件夹，请重新设置本地同步目录")
+            return
+        #判断原来的本地同步盘是否存在，且满足格式。
+        geshi=os.path.split(self.cfgw.localPath)[1]=="SyncPath" or os.path.split(os.path.split(self.cfgw.localPath)[0])[1]=="SyncPath"
+        if os.path.exists(self.cfgw.localPath) and geshi :
+            localPath_last=self.cfgw.localPath
+            #在该目录下创建同步盘：SyncPath,以及同步盘的基本结构
+            self.cfgw.localPath=self.cfgw.lineEdit_2.text()+"/SyncPath/"+self.cfgw.remotePath
+            try:
+                os.makedirs(self.cfgw.localPath)
+            except FileExistsError :
+                pass
+            #复制文件夹
+            os.system("cp -r "+localPath_last+'/* '+self.cfgw.localPath)
+        else:
+            #在该目录下创建同步盘：SyncPath,以及同步盘的基本结构
+            self.cfgw.localPath=self.cfgw.lineEdit_2.text()+"/SyncPath/"+self.cfgw.remotePath
+            try:
+                os.makedirs(self.cfgw.localPath)
+            except FileExistsError:
+                pass
+            #这里由于是个空文件夹，所以为了防止上传空文件夹，先下载一次
+            self.mybp.syncdown(self.cfgw.remotePath,self.cfgw.localPath,True)
+        #发送同步设置信号，保存设置ini文件
+        sendcfglist=[self.cfgw.localPath,self.cfgw.remotePath,self.cfgw.syncTime]
+        self.cfgw.config_sign.emit(sendcfglist)
+        self.cfgw.cfg.set('SET','localPath',self.cfgw.localPath)
+        self.cfgw.cfg.write(open(configini_dir, "w"))
+        print("本地同步盘设置成功")
+        QMessageBox.question(self.cfgw,"设置成功","本地同步盘设置成功")
 
-        sys.exit(self.app.exec_())  # 持续对app的连接
-
-   
 class syncThread(QtCore.QThread):
     #同步线程，负责进行实时的同步
     #由同步线程发出的信号，告诉主线程同步状态
@@ -119,18 +181,24 @@ class syncThread(QtCore.QThread):
 
     #线程函数
     def run(self):
+        ctct=0
         #首先程序开始，先把云端内容下下来
         if self.syncFlag==1:
             self.mybp.syncdown(self.remotePath,self.localPath,True)
+            print("download file")
         #定时上传
         while self.exitflg:
             if self.syncFlag==1:
+                ctct=ctct+1
+                print("[upload file] ", time.asctime(),"|",ctct)
                 self.mybp.syncup(self.localPath,self.remotePath,True)
-            
+                print("finish:   ",self.localPath,self.remotePath)
             self.sleep(60*self.syncTime)
 
 
 class configWindows(QWidget,configWin.Ui_Form):
+    #自定义信号，由主线程发送/由设置窗口发送
+    config_sign=QtCore.pyqtSignal(list)                     #配置参数信号，发送该信号可以改变同步线程里的配置参数
     # 设置界面窗口类
     def __init__(self):
         super(configWindows,self).__init__()
@@ -145,17 +213,12 @@ class configWindows(QWidget,configWin.Ui_Form):
         print("同步时间：",self.syncTime)
         #连接信号与槽
         self.pushButton.clicked.connect(self.On_selectPath)
-        self.pushButton_2.clicked.connect(self.On_saveConfig)
-        #自定义信号，由主线程发送/由设置窗口发送
-        self.config_sign=QtCore.pyqtSignal(list)                     #配置参数信号，发送该信号可以改变同步线程里的配置参数
+        self.pushButton_2.clicked.connect(self.On_setsyncTimeConfig)
         #初始化comboBox
         self.syncTime_cBoxlist=['1','2','3','4','5','7','10','20','30']
         self.comboBox.addItems(self.syncTime_cBoxlist)
          #更新设置界面的显示
         self.updateShow()
-        
-        
-        
         
     def updateShow(self):
         # 更新设置界面的显示
@@ -168,22 +231,16 @@ class configWindows(QWidget,configWin.Ui_Form):
         local_dir=QFileDialog.getExistingDirectory(self,'选择文件夹')
         if len(local_dir)!=0 :
             self.lineEdit_2.setText(local_dir)
-    def On_saveConfig(self):
-         #检查本地与远程目录正确性
-        if not os.path.exists(self.lineEdit_2.text()):
-            QMessageBox.question(self,"提示","不存在本地文件夹，请重新设置本地同步目录")
-            return
-        #槽、回调函数:保存设置
-        self.localPath=self.lineEdit_2.text()
-        self.remotePath=self.lineEdit.text()
+
+    def On_setsyncTimeConfig(self):
+        #槽、回调函数:保存同步时间
         self.syncTime=int(self.comboBox.currentText())
-        self.cfg.set('SET','localPath',self.localPath)
-        self.cfg.set('SET','remotePath',self.remotePath)
         self.cfg.set('SET','syncTime',str(self.syncTime))
         self.cfg.write(open(configini_dir, "w"))
+        #传输信号给同步线程：新的设置文件来了
+        sendcfglist=[self.localPath,self.remotePath,self.syncTime]
+        self.config_sign.emit(sendcfglist)
         print("应用成功")
-        print("localPath",type(self.localPath),self.localPath)
-        print("remotePath",type(self.remotePath),self.remotePath)
         print("syncTime",type(self.syncTime),self.syncTime)
     
     def closeEvent(self, event):
