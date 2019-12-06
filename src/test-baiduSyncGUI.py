@@ -11,11 +11,23 @@ from threading import Thread,Lock
 import time
 
 
+
 configini_dir='src/config.ini'
 res_dir="./res/"
 
+#日志：打算放在SyncPath目录
+class Logger(object):
+    def __init__(self, fileN="Default.log"):
+        self.terminal = sys.stdout
+        self.log = open(fileN, "a")
 
+    def write(self, message):
+        self.terminal.write(message)
+        #self.log.write(time.asctime()+" |: ")
+        self.log.write(time.asctime()+" "+message+" ")
 
+    def flush(self):
+        pass
 
 #主框架在这里
 class SystemTray(QtCore.QObject):
@@ -101,6 +113,8 @@ class SystemTray(QtCore.QObject):
         elif self.syncFlag==1:
             self.aswitch=QAction('&暂停同步', triggered=self.pauseSync)
             self.tp.setIcon(QIcon(res_dir+'cloud.ico'))
+            #如果本地正确，则在本地的上层添加log
+            sys.stdout = Logger(self.cfgw.localPath+"/../sync.log") 
         tpMenu = QMenu()
         tpMenu.addAction(a1)
         tpMenu.addAction(a2)
@@ -161,6 +175,7 @@ class SystemTray(QtCore.QObject):
         self.cfgw.config_sign.emit(sendcfglist)
         self.cfgw.cfg.set('SET','localPath',self.cfgw.localPath)
         self.cfgw.cfg.write(open(configini_dir, "w"))
+        sys.stdout = Logger(self.cfgw.localPath+"/../sync.log") 
         print("本地同步盘设置成功")
         QMessageBox.question(self.cfgw,"设置成功","本地同步盘设置成功")
 
@@ -217,11 +232,11 @@ class syncThread(QtCore.QThread):
         while self.exitflg:
             if self.syncFlag==1:
                 ctct=ctct+1
-                print("[upload file] ", time.asctime(),"|",ctct) 
+                #print("[upload file] ", time.asctime(),"|",ctct) 
                 self.syncStatus_sign.emit("upload")
                 sync_list=self.mybp.syncup(self.localPath,self.remotePath,True)
                 self.syncStatus_sign.emit("ok")
-                print("finish:   ",self.localPath,self.remotePath)
+                #print("finish:   ",self.localPath,self.remotePath)
             self.sleep(self.syncTime)
 
 
