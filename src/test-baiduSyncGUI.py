@@ -122,6 +122,7 @@ class SystemTray(QtCore.QObject):
         self.syncFlag_sign.connect(self.syncthead.changFLAG)
         self.cfgw.config_sign.connect(self.syncthead.changCONFIG)
         self.syncnow_sign.connect(self.syncthead.syncupNOW)
+        self.syncthead.syncStatus_sign.connect(self.on_changStatusIco)
         #self.syncthead.syncStatus_sign.connect
         self.syncthead.start()                    #启动线程
         
@@ -163,6 +164,17 @@ class SystemTray(QtCore.QObject):
         print("本地同步盘设置成功")
         QMessageBox.question(self.cfgw,"设置成功","本地同步盘设置成功")
 
+    def on_changStatusIco(self,stasstr):
+        if stasstr=="upload":
+            self.tp.setIcon(QIcon(res_dir+'cloud_upload.ico'))
+        elif stasstr=="down":
+            self.tp.setIcon(QIcon(res_dir+'cloud_download.ico'))
+        elif stasstr=="ok":
+            if self.syncFlag==0:
+                self.tp.setIcon(QIcon(res_dir+'cloud_pause.ico'))
+            elif self.syncFlag==1:
+                self.tp.setIcon(QIcon(res_dir+'cloud.ico'))
+
 class syncThread(QtCore.QThread):
     #同步线程，负责进行实时的同步
     #由同步线程发出的信号，告诉主线程同步状态
@@ -197,16 +209,20 @@ class syncThread(QtCore.QThread):
         ctct=0
         #首先程序开始，先把云端内容下下来
         if self.syncFlag==1:
+            self.syncStatus_sign.emit("down")
             self.mybp.syncdown(self.remotePath,self.localPath,True)
+            self.syncStatus_sign.emit("ok")
             print("download file")
         #定时上传
         while self.exitflg:
             if self.syncFlag==1:
                 ctct=ctct+1
-                print("[upload file] ", time.asctime(),"|",ctct)
-                self.mybp.syncup(self.localPath,self.remotePath,True)
+                print("[upload file] ", time.asctime(),"|",ctct) 
+                self.syncStatus_sign.emit("upload")
+                sync_list=self.mybp.syncup(self.localPath,self.remotePath,True)
+                self.syncStatus_sign.emit("ok")
                 print("finish:   ",self.localPath,self.remotePath)
-            self.sleep(60*self.syncTime)
+            self.sleep(self.syncTime)
 
 
 class configWindows(QWidget,configWin.Ui_Form):
@@ -228,7 +244,7 @@ class configWindows(QWidget,configWin.Ui_Form):
         self.pushButton.clicked.connect(self.On_selectPath)
         self.pushButton_2.clicked.connect(self.On_setsyncTimeConfig)
         #初始化comboBox
-        self.syncTime_cBoxlist=['1','2','3','4','5','7','10','20','30']
+        self.syncTime_cBoxlist=['1','2','3','4','5','7','10','20','30','60','90','120']
         self.comboBox.addItems(self.syncTime_cBoxlist)
          #更新设置界面的显示
         self.updateShow()

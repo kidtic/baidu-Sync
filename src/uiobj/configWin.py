@@ -71,6 +71,6 @@ class Ui_Form(object):
         self.pushButton_2.setText(_translate("Form", " 应用"))
         self.pushButton.setText(_translate("Form", "..."))
         self.label_3.setText(_translate("Form", "自动同步时间"))
-        self.label_4.setText(_translate("Form", "分钟"))
+        self.label_4.setText(_translate("Form", "秒"))
         self.pushButton_movedir.setText(_translate("Form", "移动同步盘"))
         self.pushButton_changremote.setText(_translate("Form", "修改远程目录"))

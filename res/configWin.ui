@@ -124,7 +124,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>分钟</string>
+    <string>秒</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButton_movedir">
