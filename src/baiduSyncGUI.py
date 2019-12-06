@@ -14,6 +14,10 @@ import time
 
 configini_dir='src/config.ini'
 res_dir="./res/"
+if os.path.exists("/opt/baiduSync"):
+    configini_dir="/opt/baiduSync/config.ini"
+    res_dir="/opt/baiduSync/res/"
+
 
 #日志：打算放在SyncPath目录
 class Logger(object):
@@ -216,7 +220,9 @@ class syncThread(QtCore.QThread):
     def syncupNOW(self):
         #只要有信号过来，立马同步上传
         print("[upload file] ", time.asctime(),"|","now")
+        self.syncStatus_sign.emit("upload")
         self.mybp.syncup(self.localPath,self.remotePath,True)
+        self.syncStatus_sign.emit("ok")
         print("finish:   ",self.localPath,self.remotePath)
 
     #线程函数
