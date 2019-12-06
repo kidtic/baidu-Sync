@@ -12,6 +12,9 @@ import time
 
 
 configini_dir='src/config.ini'
+res_dir="./res/"
+
+
 
 
 #主框架在这里
@@ -32,7 +35,7 @@ class SystemTray(QtCore.QObject):
         
     def initUI(self):
         # 设置托盘图标
-        self.tp.setIcon(QIcon('./res/cloud.ico'))
+        self.tp.setIcon(QIcon(res_dir+'cloud.ico'))
         #初始化bypy
         self.mybp=bypy.ByPy()
         infomsg=self.mybp.info()
@@ -77,11 +80,11 @@ class SystemTray(QtCore.QObject):
         if self.syncFlag==1:
             self.syncFlag=0
             self.aswitch.setText("&开启同步")
-            self.tp.setIcon(QIcon('./res/cloud_pause.ico'))
+            self.tp.setIcon(QIcon(res_dir+'cloud_pause.ico'))
         elif self.syncFlag==0:
             self.syncFlag=1
             self.aswitch.setText("&暂停同步")
-            self.tp.setIcon(QIcon('./res/cloud.ico'))
+            self.tp.setIcon(QIcon(res_dir+'cloud.ico'))
         self.syncFlag_sign.emit(self.syncFlag)
 
     def syncNow(self):
@@ -94,10 +97,10 @@ class SystemTray(QtCore.QObject):
         actsync=QAction('&立即同步', triggered=self.syncNow)
         if self.syncFlag==0:
             self.aswitch=QAction('&开启同步', triggered=self.pauseSync)
-            self.tp.setIcon(QIcon('./res/cloud_pause.ico'))
+            self.tp.setIcon(QIcon(res_dir+'cloud_pause.ico'))
         elif self.syncFlag==1:
             self.aswitch=QAction('&暂停同步', triggered=self.pauseSync)
-            self.tp.setIcon(QIcon('./res/cloud.ico'))
+            self.tp.setIcon(QIcon(res_dir+'cloud.ico'))
         tpMenu = QMenu()
         tpMenu.addAction(a1)
         tpMenu.addAction(a2)
