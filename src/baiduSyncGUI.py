@@ -12,6 +12,7 @@ import time
 
 
 
+
 configini_dir='src/config.ini'
 res_dir="./res/"
 if os.path.exists("/opt/baiduSync"):
@@ -19,19 +20,9 @@ if os.path.exists("/opt/baiduSync"):
     res_dir="/opt/baiduSync/res/"
 
 
-#日志：打算放在SyncPath目录
-class Logger(object):
-    def __init__(self, fileN="Default.log"):
-        self.terminal = sys.stdout
-        self.log = open(fileN, "a")
 
-    def write(self, message):
-        self.terminal.write(message)
-        #self.log.write(time.asctime()+" |: ")
-        self.log.write(time.asctime()+" "+message+" ")
 
-    def flush(self):
-        pass
+
 
 #主框架在这里
 class SystemTray(QtCore.QObject):
@@ -117,8 +108,7 @@ class SystemTray(QtCore.QObject):
         elif self.syncFlag==1:
             self.aswitch=QAction('&暂停同步', triggered=self.pauseSync)
             self.tp.setIcon(QIcon(res_dir+'cloud.ico'))
-            #如果本地正确，则在本地的上层添加log
-            sys.stdout = Logger(self.cfgw.localPath+"/../sync.log") 
+ 
         tpMenu = QMenu()
         tpMenu.addAction(a1)
         tpMenu.addAction(a2)
@@ -179,7 +169,6 @@ class SystemTray(QtCore.QObject):
         self.cfgw.config_sign.emit(sendcfglist)
         self.cfgw.cfg.set('SET','localPath',self.cfgw.localPath)
         self.cfgw.cfg.write(open(configini_dir, "w"))
-        sys.stdout = Logger(self.cfgw.localPath+"/../sync.log") 
         print("本地同步盘设置成功")
         QMessageBox.question(self.cfgw,"设置成功","本地同步盘设置成功")
 
@@ -198,6 +187,8 @@ class syncThread(QtCore.QThread):
     #同步线程，负责进行实时的同步
     #由同步线程发出的信号，告诉主线程同步状态
     syncStatus_sign=QtCore.pyqtSignal(str)
+    #告诉主线程，同步日志
+    synclog_sign=QtCore.pyqtSignal(list)
     def __init__(self,localPath,remotePath,syncTime,syncFlag):
         super(syncThread,self).__init__()
         #关键参数，由主线程告诉同步线程
@@ -219,30 +210,51 @@ class syncThread(QtCore.QThread):
 
     def syncupNOW(self):
         #只要有信号过来，立马同步上传
-        print("[upload file] ", time.asctime(),"|","now")
-        #self.syncStatus_sign.emit("upload")
-        self.mybp.syncup(self.localPath,self.remotePath,True)
-        #self.syncStatus_sign.emit("ok")
-        print("finish:   ",self.localPath,self.remotePath)
-
+        self.syncStatus_sign.emit("upload")
+        self.mybp.compare(self.remotePath,self.localPath)
+        diff=[self.mybp.result['diff'],self.mybp.result['local'],self.mybp.result['remote']]
+        diff_len=len(diff[0])+len(diff[1])+len(diff[2])
+        print("diff_len:",diff_len)
+        if diff_len>0:
+            print("[upload file] ", time.asctime()) 
+            sync_list=self.mybp.syncup(self.localPath,self.remotePath,True)
+            print("finish:   ",self.localPath,self.remotePath)
+            log_list=["upload",diff]
+            self.synclog_sign.emit(log_list)
+        self.syncStatus_sign.emit("ok")
     #线程函数
     def run(self):
         ctct=0
         #首先程序开始，先把云端内容下下来
         if self.syncFlag==1:
-            self.syncStatus_sign.emit("down")
-            self.mybp.syncdown(self.remotePath,self.localPath,True)
-            self.syncStatus_sign.emit("ok")
-            print("download file")
+            self.mybp.compare(self.remotePath,self.localPath)
+            diff=[self.mybp.result['diff'],self.mybp.result['local'],self.mybp.result['remote']]
+            diff_len=len(diff[0])+len(diff[1])+len(diff[2])
+            print("diff_len:",diff_len)
+            if diff_len>0:
+                self.syncStatus_sign.emit("down")
+                self.mybp.syncdown(self.remotePath,self.localPath,True)
+                self.syncStatus_sign.emit("ok")
+                print("download file")
+                log_list=["download",diff]
+                self.synclog_sign.emit(log_list)
         #定时上传
         while self.exitflg:
             if self.syncFlag==1:
                 ctct=ctct+1
-                #print("[upload file] ", time.asctime(),"|",ctct) 
-                self.syncStatus_sign.emit("upload")
-                sync_list=self.mybp.syncup(self.localPath,self.remotePath,True)
-                self.syncStatus_sign.emit("ok")
-                #print("finish:   ",self.localPath,self.remotePath)
+                self.mybp.compare(self.remotePath,self.localPath)
+                diff=[self.mybp.result['diff'],self.mybp.result['local'],self.mybp.result['remote']]
+                diff_len=len(diff[0])+len(diff[1])+len(diff[2])
+                print("diff_len:",diff_len,"   ctct:",ctct)
+
+                if diff_len>0:
+                    print("[upload file] ", time.asctime(),"|",ctct) 
+                    self.syncStatus_sign.emit("upload")
+                    sync_list=self.mybp.syncup(self.localPath,self.remotePath,True)
+                    self.syncStatus_sign.emit("ok")
+                    print("finish:   ",self.localPath,self.remotePath)
+                    log_list=["upload",diff]
+                    self.synclog_sign.emit(log_list)
             self.sleep(self.syncTime)
 
 
