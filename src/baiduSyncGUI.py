@@ -7,17 +7,21 @@ import bypy
 import configparser as config
 import os
 import uiobj.configWin as configWin
+import uiobj.logWin as logWin
 from threading import Thread,Lock
 import time
 
 
 
 
-configini_dir='src/config.ini'
+configini_dir='config/config.ini'
 res_dir="./res/"
+synclog_dir='config/sync.log'
+
 if os.path.exists("/opt/baiduSync"):
     configini_dir="/opt/baiduSync/config.ini"
     res_dir="/opt/baiduSync/res/"
+    synclog_dir='/opt/baiduSync/sync.log'
 
 
 
@@ -31,10 +35,11 @@ class SystemTray(QtCore.QObject):
     #新建一个信号：用于立即同步
     syncnow_sign=QtCore.pyqtSignal()
     # 程序托盘类
-    def __init__(self, cfgw):
+    def __init__(self, cfgw,logw):
         super(SystemTray,self).__init__()
         self.app = app
         self.cfgw = cfgw
+        self.logw=logw
         QApplication.setQuitOnLastWindowClosed(False)  # 禁止默认的closed方法，只能使用qapp.quit()的方法退出程序
         self.tp = QSystemTrayIcon(self.cfgw)
         self.initUI()
@@ -100,6 +105,7 @@ class SystemTray(QtCore.QObject):
     def run(self):
         a1 = QAction('&设置', triggered=self.cfgw.show)
         a2 = QAction('&显示本地文件',triggered=self.xdgopenFile)
+        a3=QAction('&显示日志', triggered=self.logw.show)
         aq = QAction('&退出(Exit)', triggered=self.quitApp)
         actsync=QAction('&立即同步', triggered=self.syncNow)
         if self.syncFlag==0:
@@ -112,6 +118,8 @@ class SystemTray(QtCore.QObject):
         tpMenu = QMenu()
         tpMenu.addAction(a1)
         tpMenu.addAction(a2)
+        tpMenu.addAction(a3)
+        tpMenu.addSeparator()
         tpMenu.addAction(actsync)
         tpMenu.addAction(self.aswitch)
         tpMenu.addSeparator()
@@ -131,6 +139,7 @@ class SystemTray(QtCore.QObject):
         self.cfgw.config_sign.connect(self.syncthead.changCONFIG)
         self.syncnow_sign.connect(self.syncthead.syncupNOW)
         self.syncthead.syncStatus_sign.connect(self.on_changStatusIco)
+        self.syncthead.synclog_sign.connect(self.logw.on_signlog)
         #self.syncthead.syncStatus_sign.connect
         self.syncthead.start()                    #启动线程
         
@@ -219,8 +228,12 @@ class syncThread(QtCore.QThread):
             print("[upload file] ", time.asctime()) 
             sync_list=self.mybp.syncup(self.localPath,self.remotePath,True)
             print("finish:   ",self.localPath,self.remotePath)
-            log_list=["upload",diff]
-            self.synclog_sign.emit(log_list)
+            if sync_list==bypy.const.ENoError:
+                log_list=["upload",diff]
+                self.synclog_sign.emit(log_list)
+            else:
+                log_list=["error",bypy.const.ErrorExplanations[sync_list]]
+                self.synclog_sign.emit(log_list)
         self.syncStatus_sign.emit("ok")
     #线程函数
     def run(self):
@@ -233,11 +246,16 @@ class syncThread(QtCore.QThread):
             print("diff_len:",diff_len)
             if diff_len>0:
                 self.syncStatus_sign.emit("down")
-                self.mybp.syncdown(self.remotePath,self.localPath,True)
+                sync_list=self.mybp.syncdown(self.remotePath,self.localPath,True)
+                print("syncup_result: ",bypy.const.ErrorExplanations[sync_list])
                 self.syncStatus_sign.emit("ok")
                 print("download file")
-                log_list=["download",diff]
-                self.synclog_sign.emit(log_list)
+                if sync_list==bypy.const.ENoError:
+                    log_list=["download",diff]
+                    self.synclog_sign.emit(log_list)
+                else:
+                    log_list=["error",bypy.const.ErrorExplanations[sync_list]]
+                    self.synclog_sign.emit(log_list)
         #定时上传
         while self.exitflg:
             if self.syncFlag==1:
@@ -246,15 +264,20 @@ class syncThread(QtCore.QThread):
                 diff=[self.mybp.result['diff'],self.mybp.result['local'],self.mybp.result['remote']]
                 diff_len=len(diff[0])+len(diff[1])+len(diff[2])
                 print("diff_len:",diff_len,"   ctct:",ctct)
-
+                
                 if diff_len>0:
                     print("[upload file] ", time.asctime(),"|",ctct) 
                     self.syncStatus_sign.emit("upload")
                     sync_list=self.mybp.syncup(self.localPath,self.remotePath,True)
+                    print("syncup_result: ",bypy.const.ErrorExplanations[sync_list])
                     self.syncStatus_sign.emit("ok")
                     print("finish:   ",self.localPath,self.remotePath)
-                    log_list=["upload",diff]
-                    self.synclog_sign.emit(log_list)
+                    if sync_list==bypy.const.ENoError:
+                        log_list=["upload",diff]
+                        self.synclog_sign.emit(log_list)
+                    else:
+                        log_list=["error",bypy.const.ErrorExplanations[sync_list]]
+                        self.synclog_sign.emit(log_list)
             self.sleep(self.syncTime)
 
 
@@ -308,6 +331,54 @@ class configWindows(QWidget,configWin.Ui_Form):
     def closeEvent(self, event):
         self.updateShow()
 
+class logWindows(QWidget,logWin.Ui_Form):
+    def __init__(self,logdir):
+        super(logWindows,self).__init__()
+        self.setupUi(self)
+        #打开log文件
+        self.logfd = open(logdir,"a+")
+        print("logfd: ",self.logfd)
+        #读取文件
+        self.logfd.write("\n"+time.asctime()+"  |   open baiduSync software\n")
+        self.logfd.seek(0,0)
+        logsline=self.logfd.read()
+        self.logfd.seek(0,2)
+        self.textBrowser.append(logsline)
+        #连接信号槽
+        self.pushButton.clicked.connect(self.on_clearlog)
+
+    def on_clearlog(self):
+        self.logfd.seek(0,0)
+        self.logfd.truncate()
+        self.textBrowser.clear()
+
+    def on_signlog(self,signlist):
+        if signlist[0]=='upload':
+            addstr=time.asctime()+"  |   "+signlist[0]+'   \n'
+            for e in signlist[1][0]:#diff
+                addstr=addstr+"         ->  "+e[0]+'   '+e[1]+'\n'
+            for e in signlist[1][1]:#local
+                addstr=addstr+"         +   "+e[0]+'   '+e[1]+'\n'
+            for e in signlist[1][2]:#remote
+                addstr=addstr+"         -    "+e[0]+'   '+e[1]+'\n'
+        elif signlist[0]=='download':
+            addstr=time.asctime()+"  |   "+signlist[0]+'   \n'
+            for e in signlist[1][0]:#diff
+                addstr=addstr+"         ->  "+e[0]+'   '+e[1]+'\n'
+            for e in signlist[1][1]:#local
+                addstr=addstr+"         -    "+e[0]+'   '+e[1]+'\n'
+            for e in signlist[1][2]:#remote
+                addstr=addstr+"         +   "+e[0]+'   '+e[1]+'\n'
+        elif signlist[0]=='error':
+            addstr=time.asctime()+"  |   "+signlist[0]+'   \n'
+            addstr=addstr+"          ERROR: "+signlist[1]+'\n'
+        
+        self.textBrowser.append(addstr)
+        self.logfd.write(addstr)
+
+    
+        
+
 if __name__ == "__main__":
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
 
@@ -316,6 +387,8 @@ if __name__ == "__main__":
     # 创建窗口
     #win = Window()
     configww=configWindows()
-    mytray=SystemTray(configww)
+    logw=logWindows(synclog_dir)
+    #logw.show()
+    mytray=SystemTray(configww,logw)
 
     sys.exit(app.exec_()) 

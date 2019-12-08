@@ -1,0 +1,74 @@
+
+Sun Dec  8 13:44:49 2019  |   open baiduSync software
+Sun Dec  8 13:45:08 2019  |   upload   
+         ->  F   opencv_canny/工作/lalala
+Sun Dec  8 13:45:52 2019  |   upload   
+         ->  F   opencv_canny/main.cpp
+         +   F   opencv_canny/工作/fufufu
+         -    F   opencv_canny/工作/lalala
+
+Sun Dec  8 13:46:43 2019  |   open baiduSync software
+Sun Dec  8 13:46:50 2019  |   download   
+         ->  F   opencv_canny/main.cpp
+         -    F   opencv_canny/工作/lalala
+         +   F   opencv_canny/工作/fufufu
+
+Sun Dec  8 13:48:13 2019  |   open baiduSync software
+Sun Dec  8 13:48:28 2019  |   upload   
+         -    F   opencv_canny/工作/fufufu
+Sun Dec  8 13:48:51 2019  |   upload   
+         ->  F   opencv_canny/main.cpp
+
+Sun Dec  8 13:53:09 2019  |   open baiduSync software
+
+Sun Dec  8 14:23:53 2019  |   open baiduSync software
+Sun Dec  8 14:24:18 2019  |   upload   
+         +   F   opencv_canny/工作/deepin.com.qq.im_9.1.8deepin0_i386.deb
+Sun Dec  8 14:28:09 2019  |   upload   
+         +   F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 14:28:19 2019  |   upload   
+         ->  F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 14:31:22 2019  |   upload   
+         +   F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 14:31:31 2019  |   upload   
+         +   F   opencv_canny/工作/baidu-Sync.tar.xz
+
+Sun Dec  8 14:37:36 2019  |   open baiduSync software
+Sun Dec  8 14:37:53 2019  |   upload   
+         -    F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 14:41:12 2019  |   upload   
+         +   F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 14:41:22 2019  |   upload   
+         ->  F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 14:41:31 2019  |   upload   
+         ->  F   opencv_canny/工作/baidu-Sync.tar.xz
+
+Sun Dec  8 14:52:01 2019  |   open baiduSync software
+Sun Dec  8 14:52:05 2019  |   download   
+         -    F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 14:52:27 2019  |   upload   
+         ->  F   opencv_canny/main.cpp
+
+Sun Dec  8 15:02:58 2019  |   open baiduSync software
+
+Sun Dec  8 15:06:55 2019  |   open baiduSync software
+Sun Dec  8 15:06:59 2019  |   download   
+         -    F   opencv_canny/工作/baidu-Sync.tar.xz
+Sun Dec  8 15:12:12 2019  |   error   
+          ERROR: MD5 hashes of the local file and remote file don't match each other
+Sun Dec  8 15:12:22 2019  |   error   
+          ERROR: Block miss in superfile2 (HTTP 403)
+Sun Dec  8 15:14:43 2019  |   error   
+          ERROR: Block miss in superfile2 (HTTP 403)
+Sun Dec  8 15:17:04 2019  |   error   
+          ERROR: Block miss in superfile2 (HTTP 403)
+
+Sun Dec  8 15:19:24 2019  |   open baiduSync software
+Sun Dec  8 15:19:37 2019  |   upload   
+         +   F   opencv_canny/工作/baidunetdisk_linux_2.0.1.deb
+Sun Dec  8 15:20:06 2019  |   upload   
+         -    F   opencv_canny/工作/baidunetdisk_linux_2.0.1.deb
+Sun Dec  8 15:20:51 2019  |   upload   
+         +   F   opencv_canny/工作/卡尔曼预测滤波对跟踪传感器延迟补偿的算法研究_黄永梅.pdf
+         +   F   opencv_canny/工作/家用机器人室内定位技术研究_武高雨.caj
+         +   F   opencv_canny/工作/跟踪系统中跟踪器延迟的自适应预测补偿方法_王连明.pdf
