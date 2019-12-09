@@ -3,3 +3,4 @@ dist/
 build/
 testdir/
 baiduSyncGUI
+*.deb
