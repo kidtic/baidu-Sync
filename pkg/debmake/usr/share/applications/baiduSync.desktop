@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=百度云同步盘
+Type=Application
+Exec=/opt/baiduSync/baiduSyncGUI
+Icon=/opt/baiduSync/res/yun.ico
+Categories=Network

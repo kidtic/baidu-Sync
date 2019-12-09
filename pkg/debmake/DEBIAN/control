@@ -1,0 +1,9 @@
+Package: baiduSync
+Version: 1.0.0
+Section: Software
+Priority: optional
+Depends:
+Suggests:
+Architecture: i386
+Maintainer: kidtic(zhiqiang zou)
+Description: 百度云同步盘-Linux端（联系作者：邹智强 592113107@qq.com）
